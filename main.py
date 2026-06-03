@@ -18,7 +18,9 @@ from typing import Annotated
 
 import numpy as np
 import typer
-from rich.console import Console
+from rich.console import Console, Group
+from rich.live import Live
+from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 
 from config.defaults import MC_DEFAULT_SIGMA, SAMPLE_RATE, SINR_TARGET_DB
@@ -27,7 +29,7 @@ from models.participant import Participant
 from models.room import RoomGeometry
 from simulation.engine import SimulationEngine
 from simulation.metrics import MetricsCalculator
-from simulation.monte_carlo import ConvergenceCriteria, MonteCarloRunner
+from simulation.monte_carlo import ConvergenceCriteria, IterationCallbackData, MonteCarloRunner
 from visualisation.comparison import ScenarioComparisonDashboard, ScenarioResult
 from visualisation.convergence import ConvergenceCurveRenderer
 from visualisation.heatmap import SpatialHeatmapRenderer
@@ -145,6 +147,68 @@ def _compute_coverage_percent(mc_result, microphones, room) -> float:
 
 
 # ---------------------------------------------------------------------------
+# Rich live progress display
+# ---------------------------------------------------------------------------
+
+def _run_with_progress(runner: MonteCarloRunner, label: str):
+    """Run runner.run() inside a Rich live display — progress bar + per-mic status table."""
+    mic_ids = [m.mic_id for m in runner.engine.microphones]
+    n_max = runner.criteria.n_max
+
+    progress = Progress(
+        SpinnerColumn(),
+        TextColumn("[bold]{task.description}"),
+        BarColumn(bar_width=40),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        console=console,
+    )
+    main_task = progress.add_task(label, total=n_max)
+    latest: list[IterationCallbackData | None] = [None]
+
+    def _make_status_table() -> Table:
+        tbl = Table(box=None, padding=(0, 2), show_header=True, header_style="bold")
+        tbl.add_column("Microphone", style="cyan", no_wrap=True, min_width=18)
+        tbl.add_column("Mean STOI", justify="right", min_width=10)
+        tbl.add_column("p5 STOI", justify="right", min_width=9)
+        tbl.add_column("Status", min_width=22)
+        data = latest[0]
+        for mic_id in mic_ids:
+            if data is None:
+                tbl.add_row(mic_id, "—", "—", "[dim]waiting…[/dim]")
+            else:
+                m_val = data.rolling_mean_per_mic.get(mic_id, float("nan"))
+                p_val = data.rolling_p5_per_mic.get(mic_id, float("nan"))
+                mean_str = f"{m_val:.3f}" if not np.isnan(m_val) else "—"
+                p5_str = f"{p_val:.3f}" if not np.isnan(p_val) else "—"
+                if data.converged_per_mic.get(mic_id):
+                    conv_iter = data.convergence_iter_per_mic.get(mic_id)
+                    status = f"[green]converged @{conv_iter}[/green]"
+                else:
+                    status = "[yellow]running…[/yellow]"
+                tbl.add_row(mic_id, mean_str, p5_str, status)
+        return tbl
+
+    with Live(Group(progress, _make_status_table()), console=console, refresh_per_second=10) as live:
+        def on_iteration(data: IterationCallbackData) -> None:
+            latest[0] = data
+            progress.update(main_task, completed=data.n_done)
+            live.update(Group(progress, _make_status_table()))
+
+        def on_stability_run(run_idx: int, n_runs: int) -> None:
+            progress.update(
+                main_task,
+                description=f"Stability run {run_idx}/{n_runs}",
+                completed=0,
+            )
+            live.update(Group(progress, _make_status_table()))
+
+        result = runner.run(on_iteration=on_iteration, on_stability_run=on_stability_run)
+
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
 
@@ -180,9 +244,8 @@ def simulate(
         run_stability=(n_stability > 1),
     )
 
-    console.print(f"[bold]Running Monte Carlo simulation[/bold] — σ={sigma} m, "
-                  f"N_min={n_min}, N_max={n_max}")
-    mc_result = runner.run()
+    console.print(f"σ={sigma} m, N_min={n_min}, N_max={n_max}")
+    mc_result = _run_with_progress(runner, "Monte Carlo simulation")
     console.print(f"[green]{mc_result.convergence.summary()}[/green]")
 
     # ---- Console report ----
@@ -259,8 +322,7 @@ def compare(
             criteria=criteria,
             run_stability=False,
         )
-        console.print(f"Running [bold]{label}[/bold] …")
-        mc = runner.run()
+        mc = _run_with_progress(runner, label)
         console.print(f"  {mc.convergence.summary()}")
         ch = calculator.compute_channel_count()
         cov = _compute_coverage_percent(mc, microphones, room)

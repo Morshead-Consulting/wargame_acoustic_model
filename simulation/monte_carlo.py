@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass, field
-from typing import ClassVar, Protocol
+from typing import Callable, ClassVar, Protocol
 
 import numpy as np
 
@@ -266,6 +266,21 @@ class MonteCarloResult:
 
 
 # ---------------------------------------------------------------------------
+# Callback data
+# ---------------------------------------------------------------------------
+
+@dataclass
+class IterationCallbackData:
+    """Snapshot passed to on_iteration callbacks after each Monte Carlo iteration."""
+    n_done: int
+    n_max: int
+    converged_per_mic: dict[str, bool]
+    convergence_iter_per_mic: dict[str, int | None]
+    rolling_mean_per_mic: dict[str, float]   # latest rolling mean per mic
+    rolling_p5_per_mic: dict[str, float]     # latest rolling p5 per mic
+
+
+# ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 
@@ -364,20 +379,30 @@ class MonteCarloRunner:
     # ------------------------------------------------------------------
     # Public API
 
-    def run(self) -> MonteCarloResult:
+    def run(
+        self,
+        on_iteration: Callable[[IterationCallbackData], None] | None = None,
+        on_stability_run: Callable[[int, int], None] | None = None,
+    ) -> MonteCarloResult:
         """
         Run the full Monte Carlo simulation, stopping early when all microphones
         have declared convergence (subject to n_min).  Appends a StabilityReport
         unless run_stability=False or n_stability_runs=1.
+
+        on_iteration is called after every iteration of the main run.
+        on_stability_run(run_idx, n_runs) is called before each stability seed.
         """
-        result = self._run_one(self.seed)
+        result = self._run_one(self.seed, on_iteration=on_iteration)
 
         if self.run_stability and self.criteria.n_stability_runs > 1:
-            result.stability = self.assess_stability()
+            result.stability = self.assess_stability(on_stability_run=on_stability_run)
 
         return result
 
-    def assess_stability(self) -> StabilityReport:
+    def assess_stability(
+        self,
+        on_stability_run: Callable[[int, int], None] | None = None,
+    ) -> StabilityReport:
         """
         Run _run_one() M times with different seeds and compute the coefficient
         of variation (CV = std/mean) of key metrics across the runs.
@@ -390,7 +415,11 @@ class MonteCarloRunner:
         base = self.seed if self.seed is not None else 0
         seeds = [base + i for i in range(n_runs)]
 
-        run_results = [self._run_one(seed=s) for s in seeds]
+        run_results = []
+        for idx, s in enumerate(seeds):
+            if on_stability_run is not None:
+                on_stability_run(idx + 1, n_runs)
+            run_results.append(self._run_one(seed=s, on_iteration=None))
 
         mic_ids = [m.mic_id for m in self.engine.microphones]
 
@@ -444,7 +473,11 @@ class MonteCarloRunner:
     # ------------------------------------------------------------------
     # Internal
 
-    def _run_one(self, seed: int | None) -> MonteCarloResult:
+    def _run_one(
+        self,
+        seed: int | None,
+        on_iteration: Callable[[IterationCallbackData], None] | None = None,
+    ) -> MonteCarloResult:
         """Core loop for a single seed.  Does not trigger stability assessment."""
         rng = np.random.default_rng(seed)
         participants = self.engine.participants
@@ -469,6 +502,21 @@ class MonteCarloRunner:
                 monitor.update(stoi)
 
             n_done = i + 1
+            if on_iteration is not None:
+                on_iteration(IterationCallbackData(
+                    n_done=n_done,
+                    n_max=self.criteria.n_max,
+                    converged_per_mic={mid: m.is_converged for mid, m in monitors.items()},
+                    convergence_iter_per_mic={mid: m.convergence_iteration for mid, m in monitors.items()},
+                    rolling_mean_per_mic={
+                        mid: (m.rolling_mean_history[-1] if m.rolling_mean_history else float("nan"))
+                        for mid, m in monitors.items()
+                    },
+                    rolling_p5_per_mic={
+                        mid: (m.rolling_p5_history[-1] if m.rolling_p5_history else float("nan"))
+                        for mid, m in monitors.items()
+                    },
+                ))
             if (
                 n_done >= self.criteria.n_min
                 and all(m.is_converged for m in monitors.values())
