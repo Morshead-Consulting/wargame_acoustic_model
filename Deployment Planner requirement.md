@@ -27,9 +27,31 @@ The simulation engine shall generate a **Room Impulse Response (RIR)** using **P
 
 * **Static Coordinates:** Map each player as a point source vector $(x, y, z)$. Seated positions default to $z = 1.2\text{m}$; standing positions default to $z = 1.6\text{m}$.
 * **Proximity Math (Distance vs. Effective Radius):** The engine must calculate the physical distance ($d$) between the source vector and the receiver vector. It must map this against the microphone type's **effective capture radius** to calculate inverse-square law sound pressure attenuation.
-* **Variable Monte Carlo Movement Factor:** * The tool shall allow users to input a custom movement variance parameter ($\sigma$ in meters) representing how much a participant tends to wander, pace, or lean away from their station.
+* **Variable Monte Carlo Movement Factor:** The tool shall allow users to input a custom movement variance parameter ($\sigma$ in meters) representing how much a participant tends to wander, pace, or lean away from their station.
 * **Configurable Iterations:** The software *must* expose a user-configurable parameter to vary the number of Monte Carlo iterations ($N$, e.g., 50 to 500 iterations).
-* **Capture Probability:** For each iteration, the engine will randomly shift the player's vector within the radius defined by $\sigma$. The final output must calculate an **Effective Capture Probability Score**, penalizing participants who frequently wander outside a microphone’s optimal coverage beam.
+* **Capture Probability:** For each iteration, the engine will randomly shift the player’s vector within the radius defined by $\sigma$. The final output must calculate an **Effective Capture Probability Score**, penalizing participants who frequently wander outside a microphone’s optimal coverage beam.
+
+#### Monte Carlo Convergence and Stability Monitoring
+
+Because this tool produces procurement recommendations (hard pass/fail against STOI and SINR thresholds), the reliability of the Monte Carlo estimate must itself be quantified and reported. A fixed iteration count $N$ is insufficient: the worst-case tail statistic (5th-percentile STOI) converges far more slowly than the mean, and participants whose movement range places them at the boundary of a microphone’s effective capture radius produce high per-iteration variance that requires more iterations to resolve. The tool must therefore implement two complementary quality measures:
+
+* **Convergence Monitoring (Adaptive Stopping):**
+  * After each iteration, the engine shall compute a rolling mean and rolling 5th-percentile (p5) of the STOI score for each microphone channel independently.
+  * Convergence is declared when both the rolling mean and rolling p5 have changed by less than their respective tolerances (default: $\Delta\bar{STOI} < 0.005$, $\Delta p5_{STOI} < 0.010$) over a trailing window of at least 50 consecutive iterations.
+  * The simulation **must not** stop before a configurable minimum iteration count $N_{min}$ (default: 50), regardless of convergence.
+  * The simulation **must** stop at a configurable maximum $N_{max}$ (default: 500) even if convergence has not been declared, in which case the output must carry a **non-convergence warning**.
+  * Convergence must be assessed **per microphone**, not globally. A gooseneck over a fixed participant may converge at $N=60$ while a ceiling array over a high-$\sigma$ zone requires $N=300$.
+  * The tool shall output the **iteration at which each microphone’s estimate converged**, enabling the user to diagnose which parts of the layout drive simulation cost.
+
+* **Stability Assessment (Seed Independence):**
+  * The tool shall run $M$ independent Monte Carlo simulations using different random seeds (default: $M = 5$, user-configurable up to 10).
+  * For each run, the tool records the final mean STOI, p5 STOI, mean SINR, and capture probability per microphone.
+  * A **Stability Score** shall be computed as:
+    $$S = \frac{\sigma_{\text{inter-run}}}{\bar{\mu}_{\text{inter-run}}}$$
+    (the coefficient of variation across the $M$ runs). A score $S < 0.02$ (2%) indicates a stable, trustworthy result. A score $S \geq 0.05$ (5%) must trigger a **stability warning** recommending the user increase $N_{max}$ or reduce $\sigma$.
+  * Stability scores shall be reported per microphone and per output metric, as the ceiling array over a high-movement zone will typically be less stable than a gooseneck over a fixed position.
+
+* **Convergence Curve Visualisation** (see Section 3D): the tool must render the rolling mean and rolling p5 as a function of iteration count, with a vertical marker at the detected convergence point and shaded inter-run bands for the $M$ stability runs.
 
 
 
@@ -95,3 +117,13 @@ To serve as a high-value differentiator for bid proposals, the software must gen
 
 * The UI must support side-by-side or overlay comparisons of different physical configurations (e.g., Layout A: Ceiling Arrays vs. Layout B: Table Mics).
 * It must visually plot changes in total channel counts, overall room coverage percentages, and the average projected Word Error Rate between the two options.
+
+### D. Monte Carlo Convergence Curve
+
+* Following a Monte Carlo execution with convergence monitoring enabled, the tool shall render a **convergence curve** chart per microphone showing:
+  * X-axis: iteration number (1 to $N_{final}$).
+  * Y-axis (primary): rolling mean STOI.
+  * Y-axis (secondary): rolling p5 STOI.
+  * A vertical dashed line at the iteration where convergence was declared, annotated with the iteration count.
+  * A shaded band around the mean representing the inter-run spread (min/max across $M$ stability runs), visually demonstrating result stability.
+* A **Stability Summary Table** shall accompany the chart, listing for each microphone: stability score $S$, convergence iteration, and a traffic-light indicator (green $S < 0.02$, amber $0.02 \leq S < 0.05$, red $S \geq 0.05$).

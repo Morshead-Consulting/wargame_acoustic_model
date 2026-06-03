@@ -1,0 +1,62 @@
+{
+  "room": {
+    "name": "HMGCC Wargame Room",
+    "length": 10.0,
+    "width": 8.0,
+    "height": 3.0,
+    "absorption": 0.25,
+    "rt60_formula": "sabine"
+  },
+  "participants": [
+    {"id": "blue_cmdr",    "x": 2.5, "y": 2.0, "zone": "blue_team", "posture": "seated"},
+    {"id": "blue_ops",     "x": 3.5, "y": 2.0, "zone": "blue_team", "posture": "seated"},
+    {"id": "blue_int",     "x": 2.5, "y": 3.0, "zone": "blue_team", "posture": "seated"},
+    {"id": "blue_log",     "x": 3.5, "y": 3.0, "zone": "blue_team", "posture": "seated"},
+    {"id": "red_cmdr",     "x": 6.5, "y": 5.0, "zone": "red_team",  "posture": "seated"},
+    {"id": "red_ops",      "x": 7.5, "y": 5.0, "zone": "red_team",  "posture": "seated"},
+    {"id": "red_int",      "x": 6.5, "y": 6.0, "zone": "red_team",  "posture": "seated"},
+    {"id": "red_log",      "x": 7.5, "y": 6.0, "zone": "red_team",  "posture": "seated"},
+    {"id": "umpire_chief", "x": 5.0, "y": 1.0, "zone": "umpire",    "posture": "standing"},
+    {"id": "umpire_asst",  "x": 5.0, "y": 7.0, "zone": "umpire",    "posture": "standing"}
+  ],
+  "microphones": [
+    {
+      "type": "MXA310",
+      "id": "blue_array",
+      "x": 3.0, "y": 2.5,
+      "zone": "blue_team",
+      "noise_coefficient": 0.15
+    },
+    {
+      "type": "MXA310",
+      "id": "red_array",
+      "x": 7.0, "y": 5.5,
+      "zone": "red_team",
+      "noise_coefficient": 0.10
+    },
+    {
+      "type": "MXA920",
+      "id": "ceiling_array",
+      "x": 5.0, "y": 4.0,
+      "beam_targets": [
+        [3.0, 2.5, 0.0],
+        [7.0, 5.5, 0.0],
+        [5.0, 1.0, 0.0],
+        [5.0, 7.0, 0.0]
+      ],
+      "beam_half_angle_deg": 7.5
+    },
+    {
+      "type": "MX412",
+      "id": "umpire_north",
+      "x": 5.0, "y": 1.0,
+      "zone": "umpire"
+    },
+    {
+      "type": "MX412",
+      "id": "umpire_south",
+      "x": 5.0, "y": 7.0,
+      "zone": "umpire"
+    }
+  ]
+}
