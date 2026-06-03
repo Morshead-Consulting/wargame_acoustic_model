@@ -28,39 +28,69 @@ Procuring and deploying microphone arrays for wargaming environments carries sig
 
 ---
 
-## Quick Start
+## Quick Start (Windows + uv)
 
-### Install
+[uv](https://docs.astral.sh/uv/) is the recommended way to manage the environment on Windows. It handles Python installation, virtual environments, and dependencies in one tool.
 
-```bash
-pip install -e ".[dev]"
+### 1. Install uv
+
+Open PowerShell and run:
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-> **Python version note:** `pyproject.toml` requires `>=3.11`. The repo ships a `.python-version` pin of `3.14`; if using pyenv with 3.14, pyroomacoustics and pystoi must be compiled from source as wheels may not yet be available.
+Then restart your terminal so `uv` is on the PATH.
 
-### Run a simulation
+### 2. Clone and set up the environment
 
-```bash
-python main.py simulate configs/example_wargame.json
+```powershell
+git clone <repo-url>
+cd wargame_acoustic_model
+
+# Create a virtual environment using Python 3.12 (pinned in pyproject.toml)
+uv venv
+
+# Activate the environment
+.venv\Scripts\activate
+
+# Install the project and all dependencies
+uv pip install -e ".[dev]"
+```
+
+If Python 3.12 is not installed, uv will fetch it automatically.
+
+### 3. Run a simulation
+
+```powershell
+python main.py simulate configs\example_wargame.json
 ```
 
 With options:
 
-```bash
-python main.py simulate configs/example_wargame.json \
-  --sigma 0.4 \
-  --n-min 50 \
-  --n-max 300 \
-  --n-stability 5 \
-  --noise-coeff 0.2 \
-  --seed 42 \
-  --output-dir ./outputs
+```powershell
+python main.py simulate configs\example_wargame.json `
+  --sigma 0.4 `
+  --n-min 50 `
+  --n-max 300 `
+  --n-stability 5 `
+  --noise-coeff 0.2 `
+  --seed 42 `
+  --output-dir .\outputs
 ```
 
-### Compare two layouts
+### 4. Compare two layouts
 
-```bash
-python main.py compare configs/layout_a.json configs/layout_b.json --n-max 150
+```powershell
+python main.py compare configs\layout_a.json configs\layout_b.json --n-max 150
+```
+
+Output PNGs are written to `.\outputs\` by default and can be opened directly in Windows Photos or any image viewer.
+
+### Updating dependencies
+
+```powershell
+uv pip install -e ".[dev]" --upgrade
 ```
 
 ---
@@ -252,7 +282,10 @@ main.py                     — typer CLI: simulate, compare
 | `rich` / `typer` | CLI output and argument parsing |
 
 Install dev dependencies for linting and testing:
-```bash
-pip install -e ".[dev]"
+
+```powershell
+uv pip install -e ".[dev]"
 pytest
+ruff check .
+mypy .
 ```
