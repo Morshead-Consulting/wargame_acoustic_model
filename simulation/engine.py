@@ -74,6 +74,9 @@ class SimulationEngine:
             clean_signal if clean_signal is not None else _synthesise_speech(fs)
         )
 
+    # Small inset from each wall — PRA rejects sources exactly on the boundary.
+    _WALL_MARGIN: float = 0.05
+
     def run_single(
         self,
         participant_positions: list[np.ndarray] | None = None,
@@ -82,7 +85,8 @@ class SimulationEngine:
         Run one simulation pass.
         participant_positions overrides stored positions (used by MonteCarloRunner).
         """
-        positions = participant_positions or [p.position_vector() for p in self.participants]
+        raw = participant_positions or [p.position_vector() for p in self.participants]
+        positions = [self._clamp_to_room(p) for p in raw]
         rt60 = self.room.sabine_rt60()
 
         mic_signals: dict[str, list[np.ndarray]] = {}
@@ -100,6 +104,15 @@ class SimulationEngine:
             room_geometry=self.room,
             rt60=rt60,
         )
+
+    def _clamp_to_room(self, pos: np.ndarray) -> np.ndarray:
+        """Clamp a position to lie strictly inside the room, with a small wall margin."""
+        m = self._WALL_MARGIN
+        clamped = pos.copy()
+        clamped[0] = float(np.clip(pos[0], m, self.room.length - m))
+        clamped[1] = float(np.clip(pos[1], m, self.room.width - m))
+        clamped[2] = float(np.clip(pos[2], m, self.room.height - m))
+        return clamped
 
     # ------------------------------------------------------------------
 

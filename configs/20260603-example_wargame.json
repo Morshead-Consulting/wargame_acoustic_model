@@ -1,0 +1,75 @@
+{
+  "room": {
+    "name": "DWEH Main Hall",
+    "length": 10.5,
+    "width": 6.775,
+    "height": 3.0,
+    "absorption": 0.25,
+    "rt60_formula": "sabine"
+  },
+  "participants": [
+    {"id": "Blue_Comd",    "x": 8.0, "y": 5.0, "zone": "C2", "posture": "standing"},
+    {"id": "Blue_CUOps_Chief",     "x": 7.0, "y": 5.0, "zone": "CUOps", "posture": "seated"},
+    {"id": "Blue_CUOps_Planner_1",     "x": 7.0, "y": 5.5, "zone": "CUOps", "posture": "seated"},
+    {"id": "Blue_CUOps_Planner_2",     "x": 8.0, "y": 4.0, "zone": "CUOps", "posture": "seated"},
+    {"id": "Blue_FUOPS_Chief",     "x": 7.0, "y": 3.0, "zone": "FUOPS",  "posture": "seated"},
+    {"id": "Blue_FUOPS_Planner_1",      "x": 7.0, "y": 2.5, "zone": "FUOPS",  "posture": "seated"},
+    {"id": "Blue_FUOPS_Planner_2",      "x": 6.5, "y": 2.0, "zone": "FUOPS",  "posture": "seated"},
+    {"id": "Blue COS",      "x": 7.5, "y": 6.0, "zone": "C2",  "posture": "standing"},
+    {"id": "Observer_1", "x": 5.0, "y": 5.0, "zone": "Observer1",    "posture": "standing"},
+    {"id": "Observer_2",  "x": 5.0, "y": 6.5, "zone": "Observer1",    "posture": "standing"},
+    {"id": "Plans_Cell_Chief",  "x": 3.0, "y": 6.0, "zone": "Plans",    "posture": "seated"},
+    {"id": "Plans_Manoeuvre",  "x": 3.0, "y": 5.5, "zone": "Plans",    "posture": "seated"},
+    {"id": "Plans_Fires",  "x": 3.0, "y": 4.0, "zone": "Plans",    "posture": "seated"},
+    {"id": "Plans_Int",  "x": 4.0, "y": 3.5, "zone": "Plans",    "posture": "seated"},
+    {"id": "Plans_Logs",  "x": 4.0, "y": 4.0, "zone": "Plans",    "posture": "seated"},
+    {"id": "Plans_Ops",  "x": 5.0, "y": 3.5, "zone": "Plans",    "posture": "seated"},
+    {"id": "Plans_WO",  "x": 4.0, "y": 2.0, "zone": "Plans",    "posture": "seated"},
+    {"id": "Observer_3",  "x": 5.0, "y": 1.0, "zone": "Observer2",    "posture": "standing"},
+    {"id": "Observer_4",  "x": 5.0, "y": 2.0, "zone": "Observer2",    "posture": "standing"}
+  ],
+  "microphones": [
+    {
+      "type": "MXA310",
+      "id": "C2_array",
+      "x": 8.0, "y": 5.5,
+      "zone": "C2",
+      "noise_coefficient": 0.15
+    },
+    {
+      "type": "MXA310",
+      "id": "CUOps_array",
+      "x": 7.0, "y": 3.5,
+      "zone": "CUOps",
+      "noise_coefficient": 0.10
+    },
+    {
+      "type": "MXA310",
+      "id": "FUOPS_array",
+      "x": 7.0, "y": 2.5,
+      "zone": "FUOPS",
+      "noise_coefficient": 0.15
+    },
+    {
+      "type": "MXA310",
+      "id": "Plans_array",
+      "x": 3.0, "y": 3.5,
+      "zone": "Plans",
+      "noise_coefficient": 0.15
+    },
+    {
+      "type": "MXA310",
+      "id": "Observer1_array",
+      "x": 5.0, "y": 5.5,
+      "zone": "Observer1",
+      "noise_coefficient": 0.15
+    },
+    {
+      "type": "MXA310",
+      "id": "Observer2_array",
+      "x": 5.0, "y": 1.5,
+      "zone": "Observer2",
+      "noise_coefficient": 0.10
+    }
+  ]
+}
